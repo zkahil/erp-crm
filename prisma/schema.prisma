@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  COMMERCIAL
+  COMPTABLE
+  MAGASINIER
+  RH
+  EMPLOYEE
+  SUPPORT
+}
+
+enum ProspectStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+enum OpportunityStatus {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PROCESSING
+  PARTIALLY_DELIVERED
+  DELIVERED
+  CANCELLED
+}
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  CHECK
+  OTHER
+}
+enum StockMovementType {
+  INITIAL
+  PURCHASE
+  SALE
+  RETURN
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  LOSS
+}
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VALIDATE
+  CANCEL
+  LOGIN
+  LOGOUT
+  EXPORT
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  ice       String?
+  ifNumber  String?
+  rc        String?
+  address   String?
+  phone     String?
+  email     String?
+  modules   Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  customers  Customer[]
+  prospects  Prospect[]
+  products   Product[]
+  warehouses Warehouse[]
+  movements  StockMovement[]
+  quotes     Quote[]
+  orders     Order[]
+  invoices   Invoice[]
+  payments   Payment[]
+  auditLogs  AuditLog[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String   @unique
+  name           String?
+  passwordHash   String
+  role           Role     @default(EMPLOYEE)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Customer {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  paymentTerms   Int       @default(30)
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  contacts      Contact[]
+  opportunities Opportunity[]
+  quotes        Quote[]
+  orders        Order[]
+  invoices      Invoice[]
+
+  @@index([organizationId])
+}
+
+model Contact {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  name           String
+  email          String?
+  phone          String?
+  createdAt      DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Prospect {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  company        String?
+  email          String?
+  phone          String?
+  source         String?
+  status         ProspectStatus @default(NEW)
+  assignedToId   String?
+  potential      Decimal?       @db.Decimal(14, 2)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Opportunity {
+  id             String            @id @default(cuid())
+  organizationId String
+  customerId     String
+  title          String            @default("")
+  amount         Decimal           @db.Decimal(14, 2)
+  probability    Int               @default(0)
+  expectedDate   DateTime?
+  assignedToId   String?
+  status         OpportunityStatus @default(NEW)
+  notes          String?
+  createdAt      DateTime          @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  organizationId String
+  sku            String
+  name           String
+  description    String?
+  barcode        String?
+  purchasePrice  Decimal   @default(0) @db.Decimal(14, 2)
+  salePrice      Decimal   @default(0) @db.Decimal(14, 2)
+  vatRate        Decimal   @default(20) @db.Decimal(5, 2)
+  unit           String    @default("unité")
+  minStock       Int       @default(0)
+  active         Boolean   @default(true)
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  movements    StockMovement[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+}
+
+model Warehouse {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  movements    StockMovement[]
+
+  @@index([organizationId])
+}
+
+// Le stock = somme des mouvements, jamais un champ modifiable.
+model StockMovement {
+  id             String            @id @default(cuid())
+  organizationId String
+  productId      String
+  warehouseId    String
+  type           StockMovementType
+  quantity       Int
+  reference      String?
+  reason         String?
+  userId         String?
+  createdAt      DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+  warehouse    Warehouse    @relation(fields: [warehouseId], references: [id])
+
+  @@index([organizationId, productId, warehouseId])
+}
+
+model Quote {
+  id             String      @id @default(cuid())
+  organizationId String
+  number         String
+  customerId     String
+  status         QuoteStatus @default(DRAFT)
+  date           DateTime    @default(now())
+  validUntil     DateTime?
+  totalHT        Decimal     @default(0) @db.Decimal(14, 2)
+  totalVAT       Decimal     @default(0) @db.Decimal(14, 2)
+  totalTTC       Decimal     @default(0) @db.Decimal(14, 2)
+  notes          String?
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  lines        QuoteLine[]
+  orders       Order[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+}
+
+model QuoteLine {
+  id          String  @id @default(cuid())
+  quoteId     String
+  productId   String?
+  description String
+  quantity    Decimal @db.Decimal(14, 3)
+  unitPrice   Decimal @db.Decimal(14, 2)
+  discount    Decimal @default(0) @db.Decimal(5, 2)
+  vatRate     Decimal @default(20) @db.Decimal(5, 2)
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  organizationId String
+  number         String
+  customerId     String
+  quoteId        String?
+  status         OrderStatus @default(DRAFT)
+  totalHT        Decimal     @default(0) @db.Decimal(14, 2)
+  totalTTC       Decimal     @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  quote        Quote?       @relation(fields: [quoteId], references: [id])
+  invoices     Invoice[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  number         String
+  customerId     String
+  orderId        String?
+  status         InvoiceStatus @default(DRAFT)
+  date           DateTime      @default(now())
+  dueDate        DateTime?
+  totalHT        Decimal       @default(0) @db.Decimal(14, 2)
+  totalVAT       Decimal       @default(0) @db.Decimal(14, 2)
+  totalTTC       Decimal       @default(0) @db.Decimal(14, 2)
+  paidAmount     Decimal       @default(0) @db.Decimal(14, 2)
+  notes          String?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  order        Order?       @relation(fields: [orderId], references: [id])
+  payments     Payment[]
+  lines        InvoiceLine[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  productId   String?
+  description String
+  quantity    Decimal @db.Decimal(14, 3)
+  unitPrice   Decimal @db.Decimal(14, 2)
+  discount    Decimal @default(0) @db.Decimal(5, 2)
+  vatRate     Decimal @default(20) @db.Decimal(5, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(14, 2)
+  paidAt         DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id])
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String      @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         AuditAction
+  entity         String
+  entityId       String?
+  oldData        Json?
+  newData        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, entity, entityId])
+}

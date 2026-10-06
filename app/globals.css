@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #edeff3;
+  --surface: #ffffff;
+  --sunken: #f5f6f9;
+  --line: #dde1e9;
+  --ink: #151a24;
+  --muted: #646e84;
+  --brand: #2b3fd9;
+  --brand-soft: #e7eafd;
+  --ok: #12805c;
+  --ok-soft: #ddf3ea;
+  --warn: #8f5505;
+  --warn-soft: #fbeacb;
+  --bad: #bf3623;
+  --bad-soft: #fbe3dd;
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0d1017;
+  --surface: #151a24;
+  --sunken: #10141c;
+  --line: #262d3b;
+  --ink: #e8ebf2;
+  --muted: #8d97ab;
+  --brand: #7d8bff;
+  --brand-soft: #1d2352;
+  --ok: #4cc79b;
+  --ok-soft: #123226;
+  --warn: #efb457;
+  --warn-soft: #3a2a0b;
+  --bad: #ff8a75;
+  --bad-soft: #3c1a14;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+@keyframes pulse-soft { 50% { opacity: 0.5; } }
+.skeleton { background: var(--line); border-radius: 0.5rem; animation: pulse-soft 1.4s ease-in-out infinite; }
+
+/* Motif d'étoile à huit branches utilisé uniquement sur la page de connexion */
+.zellige {
+  background-color: #2b3fd9;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.16' stroke-width='1'%3E%3Crect x='14' y='14' width='36' height='36'/%3E%3Crect x='14' y='14' width='36' height='36' transform='rotate(45 32 32)'/%3E%3C/g%3E%3C/svg%3E");
+}
