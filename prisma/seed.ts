@@ -1,4 +1,4 @@
-import { PrismaClient, type InvoiceStatus, type QuoteStatus, type OpportunityStatus } from "@prisma/client";
+import { PrismaClient, type Customer, type Product, type InvoiceStatus, type QuoteStatus, type OpportunityStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { calculateInvoiceTotals } from "../services/sales/invoice.service";
 
@@ -49,7 +49,7 @@ async function main() {
   ];
   for (const [email, name, role] of users) await db.user.create({ data: { organizationId: o, email, name, role, passwordHash } });
 
-  const customers = [];
+  const customers: Customer[] = [];
   for (const [i, [name, city]] of CUSTOMERS.entries()) {
     customers.push(await db.customer.create({ data: {
       organizationId: o, name, city, email: `contact${i + 1}@${name.toLowerCase().replace(/[^a-z]+/g, "")}.ma`,
@@ -59,7 +59,7 @@ async function main() {
 
   const warehouses = [await db.warehouse.create({ data: { organizationId: o, name: "Casablanca" } }), await db.warehouse.create({ data: { organizationId: o, name: "Tanger" } })];
 
-  const products = [];
+  const products: Product[] = [];
   for (const [i, name] of PRODUCTS.entries()) {
     const buy = int(30, 1500);
     const p = await db.product.create({ data: { organizationId: o, sku: `PRD-${String(i + 1).padStart(3, "0")}`, name, purchasePrice: buy, salePrice: Math.round(buy * (1.25 + rnd() * 0.3)), minStock: int(5, 20) } });
